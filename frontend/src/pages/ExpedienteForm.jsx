@@ -623,7 +623,7 @@ const ExpedienteForm = () => {
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="Total de Fojas"
+                  label="Total de Hojas"
                   name="total_hojas"
                   type="number"
                   value={formData.total_hojas}
