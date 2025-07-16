@@ -1,8 +1,11 @@
 // === ARCHIVO: frontend/src/context/AuthContext.jsx ===
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import authService from '../services/auth.service';
 
 export const AuthContext = createContext(null);
+
+// Hook de conveniencia para consumir el contexto
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

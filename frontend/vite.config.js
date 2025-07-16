@@ -8,7 +8,11 @@ export default defineConfig({
     port: 5173,
     strictPort: false, // Si el puerto está ocupado, usar el siguiente disponible
     host: true, // Exponer en la red local
+
+    open: false, // No abrir el navegador automáticamente (evita errores en entornos sin GUI)
+
     open: true, // Abrir el navegador automáticamente
+
     proxy: {
       '/api': 'http://localhost:3000'
     }

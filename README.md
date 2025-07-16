@@ -24,3 +24,6 @@ frontend se redirigen automáticamente al backend gracias a la configuración de
 proxy en `vite.config.js`.
 
 
+Durante el desarrollo las peticiones realizadas a la ruta `/api` desde el
+frontend se redirigen automáticamente al backend gracias a la configuración de
+proxy en `vite.config.js`.
