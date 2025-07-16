@@ -1,0 +1,31 @@
+node_modules/
+.env
+uploads/
+temp/
+*.log
+.DS_Store
+
+# Salidas de producción
+dist/
+build/
+
+# Archivos generados por automatización
+*.png
+*.pdf
+*.xlsx
+*.xls
+*.xml
+
+# Bases de datos
+*.sql
+*.dump
+*.backup
+
+# Configuración de editores
+.vscode/
+.idea/
+*.swp
+
+# Lockfiles alternativos
+yarn.lock
+pnpm-lock.yaml
