@@ -15,7 +15,10 @@ const verifyToken = async (req, res, next) => {
         }
 
         // Verificar el token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(
+            token,
+            process.env.JWT_SECRET || 'default_secret_key'
+        );
         
         // Buscar el usuario en la base de datos
         const result = await pool.query(
@@ -77,7 +80,10 @@ const optionalAuth = async (req, res, next) => {
         const token = req.headers['authorization']?.split(' ')[1];
         
         if (token) {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const decoded = jwt.verify(
+                token,
+                process.env.JWT_SECRET || 'default_secret_key'
+            );
             const result = await pool.query(
                 'SELECT id, nombre, email, rol, area FROM usuarios WHERE id = $1 AND activo = true',
                 [decoded.userId]
