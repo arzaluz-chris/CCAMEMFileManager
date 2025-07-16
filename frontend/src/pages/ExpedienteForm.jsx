@@ -15,7 +15,10 @@ import {
   Snackbar,
   Chip,
   FormHelperText,
-  InputAdornment
+  InputAdornment,
+  FormGroup,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -44,6 +47,7 @@ const ExpedienteForm = () => {
   // Estado del formulario
   const [formData, setFormData] = useState({
     numero_expediente: '',
+    nombre: '',
     asunto: '',
     area_id: '',
     seccion_id: '',
@@ -51,16 +55,16 @@ const ExpedienteForm = () => {
     subserie_id: '',
     fecha_apertura: new Date(),
     fecha_cierre: null,
-    total_fojas: '',
-    total_legajos: '',
+    total_hojas: '',
+    numero_legajos: '',
     ubicacion_fisica: '',
-    valor_documental: '',
+    valoresDocumentales: [],
     vigencia_documental: '',
     tiempo_conservacion_archivo_tramite: '',
     tiempo_conservacion_archivo_concentracion: '',
     destino_final: '',
     observaciones: '',
-    estatus: 'ACTIVO'
+    estado: 'activo'
   });
 
   // Estado para los catálogos
@@ -184,13 +188,20 @@ const ExpedienteForm = () => {
       setLoading(true);
       const response = await axios.get(`/expedientes/${id}`);
       const expediente = response.data;
-      
+
       // Convertir fechas de string a Date
       expediente.fecha_apertura = new Date(expediente.fecha_apertura);
       if (expediente.fecha_cierre) {
         expediente.fecha_cierre = new Date(expediente.fecha_cierre);
       }
-      
+
+      // Mapear valores documentales desde booleans
+      expediente.valoresDocumentales = [];
+      if (expediente.valor_administrativo) expediente.valoresDocumentales.push('administrativo');
+      if (expediente.valor_juridico) expediente.valoresDocumentales.push('legal');
+      if (expediente.valor_fiscal) expediente.valoresDocumentales.push('fiscal');
+      if (expediente.valor_contable) expediente.valoresDocumentales.push('contable');
+
       setFormData(expediente);
       
       // Cargar catálogos dependientes
@@ -231,6 +242,25 @@ const ExpedienteForm = () => {
   };
 
   /**
+   * Maneja los checkboxes de valores documentales
+   */
+  const handleValorDocumentalChange = (e) => {
+    const { name, checked } = e.target;
+    setFormData((prev) => {
+      const valores = new Set(prev.valoresDocumentales);
+      if (checked) {
+        valores.add(name);
+      } else {
+        valores.delete(name);
+      }
+      return { ...prev, valoresDocumentales: Array.from(valores) };
+    });
+    if (errors.valoresDocumentales) {
+      setErrors((prev) => ({ ...prev, valoresDocumentales: '' }));
+    }
+  };
+
+  /**
    * Maneja cambios en las fechas
    */
   const handleDateChange = (date, field) => {
@@ -257,6 +287,9 @@ const ExpedienteForm = () => {
     if (!formData.numero_expediente) {
       nuevosErrores.numero_expediente = 'El número de expediente es requerido';
     }
+    if (!formData.nombre) {
+      nuevosErrores.nombre = 'El nombre es requerido';
+    }
     if (!formData.asunto) {
       nuevosErrores.asunto = 'El asunto es requerido';
     }
@@ -272,17 +305,17 @@ const ExpedienteForm = () => {
     if (!formData.fecha_apertura) {
       nuevosErrores.fecha_apertura = 'La fecha de apertura es requerida';
     }
-    if (!formData.total_fojas || formData.total_fojas < 0) {
-      nuevosErrores.total_fojas = 'El total de fojas debe ser mayor a 0';
+    if (!formData.total_hojas || formData.total_hojas < 0) {
+      nuevosErrores.total_hojas = 'El total de hojas debe ser mayor a 0';
     }
-    if (!formData.total_legajos || formData.total_legajos < 0) {
-      nuevosErrores.total_legajos = 'El total de legajos debe ser mayor a 0';
+    if (!formData.numero_legajos || formData.numero_legajos < 0) {
+      nuevosErrores.numero_legajos = 'El número de legajos debe ser mayor a 0';
     }
     if (!formData.ubicacion_fisica) {
       nuevosErrores.ubicacion_fisica = 'La ubicación física es requerida';
     }
-    if (!formData.valor_documental) {
-      nuevosErrores.valor_documental = 'El valor documental es requerido';
+    if (formData.valoresDocumentales.length === 0) {
+      nuevosErrores.valoresDocumentales = 'Seleccione al menos un valor documental';
     }
     if (!formData.vigencia_documental) {
       nuevosErrores.vigencia_documental = 'La vigencia documental es requerida';
@@ -315,10 +348,15 @@ const ExpedienteForm = () => {
 
     try {
       // Preparar datos para enviar
+      const { valoresDocumentales, ...rest } = formData;
       const datosEnviar = {
-        ...formData,
-        total_fojas: parseInt(formData.total_fojas),
-        total_legajos: parseInt(formData.total_legajos),
+        ...rest,
+        total_hojas: parseInt(formData.total_hojas),
+        numero_legajos: parseInt(formData.numero_legajos),
+        valor_administrativo: valoresDocumentales.includes('administrativo'),
+        valor_juridico: valoresDocumentales.includes('legal'),
+        valor_fiscal: valoresDocumentales.includes('fiscal'),
+        valor_contable: valoresDocumentales.includes('contable'),
         tiempo_conservacion_archivo_tramite: formData.tiempo_conservacion_archivo_tramite ? parseInt(formData.tiempo_conservacion_archivo_tramite) : null,
         tiempo_conservacion_archivo_concentracion: formData.tiempo_conservacion_archivo_concentracion ? parseInt(formData.tiempo_conservacion_archivo_concentracion) : null,
         // Formatear fechas a ISO string
@@ -391,20 +429,33 @@ const ExpedienteForm = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth error={!!errors.estatus}>
+                <FormControl fullWidth error={!!errors.estado}>
                   <InputLabel>Estado</InputLabel>
                   <Select
-                    name="estatus"
-                    value={formData.estatus}
+                    name="estado"
+                    value={formData.estado}
                     onChange={handleChange}
                     label="Estado"
                   >
-                    <MenuItem value="ACTIVO">Activo</MenuItem>
-                    <MenuItem value="CERRADO">Cerrado</MenuItem>
-                    <MenuItem value="TRANSFERIDO">Transferido</MenuItem>
-                    <MenuItem value="BAJA">Baja</MenuItem>
+                    <MenuItem value="activo">Activo</MenuItem>
+                    <MenuItem value="cerrado">Cerrado</MenuItem>
+                    <MenuItem value="transferido">Transferido</MenuItem>
+                    <MenuItem value="baja">Baja</MenuItem>
                   </Select>
                 </FormControl>
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Nombre del Expediente"
+                  name="nombre"
+                  value={formData.nombre}
+                  onChange={handleChange}
+                  error={!!errors.nombre}
+                  helperText={errors.nombre}
+                  required
+                />
               </Grid>
 
               <Grid item xs={12}>
@@ -573,12 +624,12 @@ const ExpedienteForm = () => {
                 <TextField
                   fullWidth
                   label="Total de Fojas"
-                  name="total_fojas"
+                  name="total_hojas"
                   type="number"
-                  value={formData.total_fojas}
+                  value={formData.total_hojas}
                   onChange={handleChange}
-                  error={!!errors.total_fojas}
-                  helperText={errors.total_fojas}
+                  error={!!errors.total_hojas}
+                  helperText={errors.total_hojas}
                   required
                   InputProps={{ inputProps: { min: 1 } }}
                 />
@@ -588,12 +639,12 @@ const ExpedienteForm = () => {
                 <TextField
                   fullWidth
                   label="Total de Legajos"
-                  name="total_legajos"
+                  name="numero_legajos"
                   type="number"
-                  value={formData.total_legajos}
+                  value={formData.numero_legajos}
                   onChange={handleChange}
-                  error={!!errors.total_legajos}
-                  helperText={errors.total_legajos}
+                  error={!!errors.numero_legajos}
+                  helperText={errors.numero_legajos}
                   required
                   InputProps={{ inputProps: { min: 1 } }}
                 />
@@ -621,21 +672,52 @@ const ExpedienteForm = () => {
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <FormControl fullWidth error={!!errors.valor_documental} required>
-                  <InputLabel>Valor Documental</InputLabel>
-                  <Select
-                    name="valor_documental"
-                    value={formData.valor_documental}
-                    onChange={handleChange}
-                    label="Valor Documental"
-                  >
-                    <MenuItem value="ADMINISTRATIVO">Administrativo</MenuItem>
-                    <MenuItem value="LEGAL">Legal</MenuItem>
-                    <MenuItem value="FISCAL">Fiscal</MenuItem>
-                    <MenuItem value="CONTABLE">Contable</MenuItem>
-                    <MenuItem value="HISTORICO">Histórico</MenuItem>
-                  </Select>
-                  {errors.valor_documental && <FormHelperText>{errors.valor_documental}</FormHelperText>}
+                <FormControl error={!!errors.valoresDocumentales} component="fieldset">
+                  <FormGroup row>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.valoresDocumentales.includes('administrativo')}
+                          onChange={handleValorDocumentalChange}
+                          name="administrativo"
+                        />
+                      }
+                      label="Administrativo"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.valoresDocumentales.includes('legal')}
+                          onChange={handleValorDocumentalChange}
+                          name="legal"
+                        />
+                      }
+                      label="Legal"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.valoresDocumentales.includes('fiscal')}
+                          onChange={handleValorDocumentalChange}
+                          name="fiscal"
+                        />
+                      }
+                      label="Fiscal"
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={formData.valoresDocumentales.includes('contable')}
+                          onChange={handleValorDocumentalChange}
+                          name="contable"
+                        />
+                      }
+                      label="Contable"
+                    />
+                  </FormGroup>
+                  {errors.valoresDocumentales && (
+                    <FormHelperText>{errors.valoresDocumentales}</FormHelperText>
+                  )}
                 </FormControl>
               </Grid>
 

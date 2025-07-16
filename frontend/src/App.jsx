@@ -7,7 +7,7 @@ import PrivateRoute from "./components/common/PrivateRoute";
 import Layout from "./components/common/Layout";
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Expedientes from './pages/Expedientes';
+import ExpedientesList from './pages/ExpedientesList';
 import ExpedienteForm from './pages/ExpedienteForm';
 import ExpedienteDetail from './pages/ExpedienteDetail';
 import Digitalizacion from './pages/Digitalizacion';
@@ -93,7 +93,7 @@ function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 
                 {/* Gestión de Expedientes */}
-                <Route path="/expedientes" element={<Expedientes />} />
+                <Route path="/expedientes" element={<ExpedientesList />} />
                 <Route path="/expedientes/nuevo" element={<ExpedienteForm />} />
                 <Route path="/expedientes/editar/:id" element={<ExpedienteForm />} />
                 <Route path="/expedientes/:id" element={<ExpedienteDetail />} />
