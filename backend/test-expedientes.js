@@ -2,6 +2,7 @@
 // Script para probar las APIs de expedientes
 
 const axios = require('axios');
+const assert = require('assert');
 
 const API_URL = 'http://localhost:3000/api';
 let TOKEN = '';
@@ -16,6 +17,8 @@ async function testExpedientes() {
             email: 'admin@ccamem.gob.mx',
             password: 'admin123'
         });
+        assert.strictEqual(loginResponse.status, 200, 'Login debe regresar 200');
+        assert.ok(loginResponse.data.token, 'Login debe regresar un token');
         TOKEN = loginResponse.data.token;
         console.log('✅ Login exitoso\n');
 
@@ -29,6 +32,8 @@ async function testExpedientes() {
         // 2. Listar expedientes
         console.log('2️⃣ Listando expedientes...');
         const listResponse = await authAxios.get(`${API_URL}/expedientes`);
+        assert.strictEqual(listResponse.status, 200, 'Listar debe regresar 200');
+        assert.ok(Array.isArray(listResponse.data.data), 'Respuesta debe incluir arreglo de datos');
         console.log(`✅ Expedientes encontrados: ${listResponse.data.pagination.totalItems}`);
         console.log('Primeros expedientes:', listResponse.data.data.slice(0, 3).map(e => ({
             numero: e.numero_expediente,
@@ -56,6 +61,8 @@ async function testExpedientes() {
 
         try {
             const createResponse = await authAxios.post(`${API_URL}/expedientes`, nuevoExpediente);
+            assert.strictEqual(createResponse.status, 201, 'Crear debe regresar 201');
+            assert.ok(createResponse.data.expediente.id, 'Respuesta debe incluir id del expediente');
             console.log('✅ Expediente creado:', {
                 id: createResponse.data.expediente.id,
                 numero: createResponse.data.expediente.numero_expediente
@@ -66,6 +73,8 @@ async function testExpedientes() {
             // 4. Obtener expediente por ID
             console.log('\n4️⃣ Obteniendo expediente por ID...');
             const getResponse = await authAxios.get(`${API_URL}/expedientes/${expedienteId}`);
+            assert.strictEqual(getResponse.status, 200, 'Obtener debe regresar 200');
+            assert.strictEqual(getResponse.data.id, expedienteId, 'ID devuelto debe coincidir');
             console.log('✅ Expediente obtenido:', {
                 id: getResponse.data.id,
                 numero: getResponse.data.numero_expediente,
@@ -81,6 +90,8 @@ async function testExpedientes() {
                 observaciones: 'Actualizado en prueba'
             };
             const updateResponse = await authAxios.put(`${API_URL}/expedientes/${expedienteId}`, updateData);
+            assert.strictEqual(updateResponse.status, 200, 'Actualizar debe regresar 200');
+            assert.strictEqual(updateResponse.data.expediente.id, expedienteId, 'ID actualizado debe coincidir');
             console.log('✅ Expediente actualizado');
 
             // 6. Buscar expedientes con filtros
@@ -91,6 +102,8 @@ async function testExpedientes() {
                     estado: 'activo'
                 }
             });
+            assert.strictEqual(searchResponse.status, 200, 'Buscar debe regresar 200');
+            assert.ok(Array.isArray(searchResponse.data.data), 'Buscar debe regresar arreglo');
             console.log(`✅ Expedientes encontrados con "prueba": ${searchResponse.data.pagination.totalItems}`);
 
         } catch (createError) {
@@ -105,11 +118,10 @@ async function testExpedientes() {
         console.log('\n7️⃣ Probando acceso sin autenticación...');
         try {
             await axios.get(`${API_URL}/expedientes`);
-            console.log('❌ ERROR: Se permitió acceso sin token');
+            assert.fail('Se permitió acceso sin token');
         } catch (error) {
-            if (error.response?.status === 401) {
-                console.log('✅ Correctamente bloqueado sin token');
-            }
+            assert.strictEqual(error.response?.status, 401, 'Debe responder 401 sin token');
+            console.log('✅ Correctamente bloqueado sin token');
         }
 
         console.log('\n✅ Todas las pruebas completadas exitosamente!');
@@ -120,6 +132,7 @@ async function testExpedientes() {
             console.error('Status:', error.response.status);
             console.error('Data:', error.response.data);
         }
+        process.exit(1);
     }
 }
 
