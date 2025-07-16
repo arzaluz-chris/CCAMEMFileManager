@@ -1,17 +1,18 @@
-// === ARCHIVO: frontend/src/services/api.js ===
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-
-// Crear instancia de axios
+/**
+ * Configuración de Axios para las peticiones al backend
+ */
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para agregar token a las peticiones
+/**
+ * Interceptor para agregar el token JWT a todas las peticiones
+ */
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -25,16 +26,21 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar respuestas y errores
+/**
+ * Interceptor para manejar respuestas y errores globalmente
+ */
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   (error) => {
+    // Si el token expiró o es inválido, redirigir a login
     if (error.response?.status === 401) {
-      // Token expirado o inválido
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
     return Promise.reject(error);
   }
 );

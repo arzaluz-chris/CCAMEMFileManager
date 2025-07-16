@@ -32,7 +32,7 @@ import {
   Business as BusinessIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import axios from '../services/api';
+import axios from "../../services/api";
 
 /**
  * Componente para gestionar las áreas del catálogo de clasificación archivística

@@ -3,8 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './context/AuthContext';
-import PrivateRoute from './components/PrivateRoute';
-import Layout from './components/Layout';
+import PrivateRoute from "./components/common/PrivateRoute";
+import Layout from "./components/common/Layout";
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Expedientes from './pages/Expedientes';
@@ -13,10 +13,10 @@ import ExpedienteDetail from './pages/ExpedienteDetail';
 import Digitalizacion from './pages/Digitalizacion';
 import Reportes from './pages/Reportes';
 import SISER from './pages/SISER';
-import Areas from './pages/Areas';
-import Secciones from './pages/Secciones';
-import Series from './pages/Series';
-import Subseries from './pages/Subseries';
+import Areas from "./pages/catalogo/Areas";
+import Secciones from "./pages/catalogo/Secciones";
+import Series from "./pages/catalogo/Series";
+import Subseries from "./pages/catalogo/Subseries";
 import Usuarios from './pages/Usuarios';
 import Configuracion from './pages/Configuracion';
 
