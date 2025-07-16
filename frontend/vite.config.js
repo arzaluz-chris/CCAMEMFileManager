@@ -11,7 +11,11 @@ export default defineConfig({
 
     open: false, // No abrir el navegador automáticamente (evita errores en entornos sin GUI)
 
+
+    open: false, // No abrir el navegador automáticamente (evita errores en entornos sin GUI)
+
     open: true, // Abrir el navegador automáticamente
+
 
     proxy: {
       '/api': 'http://localhost:3000'
