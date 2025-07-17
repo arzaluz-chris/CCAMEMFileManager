@@ -280,9 +280,9 @@ const ExpedienteDetail = () => {
             </Typography>
           </Grid>
           <Grid item xs={12} md={4} textAlign="right">
-            <Chip 
-              label={expediente.estatus} 
-              color={getStatusColor(expediente.estatus)}
+            <Chip
+              label={expediente.estado?.toUpperCase()}
+              color={getStatusColor(expediente.estado?.toUpperCase())}
               size="large"
             />
           </Grid>
@@ -389,7 +389,7 @@ const ExpedienteDetail = () => {
                     </ListItemIcon>
                     <ListItemText
                       primary="Fojas / Legajos"
-                      secondary={`${expediente.total_fojas} fojas en ${expediente.total_legajos} legajo(s)`}
+                      secondary={`${expediente.total_hojas} fojas en ${expediente.numero_legajos} legajo(s)`}
                     />
                   </ListItem>
                   <ListItem>

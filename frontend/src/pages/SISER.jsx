@@ -231,8 +231,8 @@ const SISER = () => {
         seccion: row['Sección'] || '',
         serie: row['Serie'] || row['  Serie'] || '',
         nombre: row['Nombre'] || '',
-        total_fojas: parseInt(row['Total de Fojas'] || row['Total de Fojas '] || 0),
-        legajos: parseInt(row['Legajos'] || 1),
+        total_hojas: parseInt(row['Total de Fojas'] || row['Total de Fojas '] || 0),
+        numero_legajos: parseInt(row['Legajos'] || 1),
         fecha_inicio: row['Fecha de inicio'],
         fecha_cierre: row['Fecha de Cierre'],
         subserie: row['Subserie'] || ''
