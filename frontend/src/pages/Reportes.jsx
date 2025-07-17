@@ -71,7 +71,7 @@ const Reportes = () => {
     area_id: '',
     seccion_id: '',
     serie_id: '',
-    estatus: '',
+    estado: '',
     formato: 'excel'
   });
 
@@ -262,7 +262,7 @@ const Reportes = () => {
         ...(filters.area_id && { area_id: filters.area_id }),
         ...(filters.seccion_id && { seccion_id: filters.seccion_id }),
         ...(filters.serie_id && { serie_id: filters.serie_id }),
-        ...(filters.estatus && { estatus: filters.estatus })
+        ...(filters.estado && { estado: filters.estado })
       };
 
       const response = await axios.get('/reportes/generar', {
@@ -470,8 +470,8 @@ const Reportes = () => {
                   <FormControl fullWidth>
                     <InputLabel>Estado</InputLabel>
                     <Select
-                      value={filters.estatus}
-                      onChange={(e) => handleFilterChange('estatus', e.target.value)}
+                      value={filters.estado}
+                      onChange={(e) => handleFilterChange('estado', e.target.value)}
                       label="Estado"
                     >
                       <MenuItem value="">
@@ -631,12 +631,12 @@ const Reportes = () => {
                         </TableCell>
                         <TableCell>
                           <Chip
-                            label={row.estatus}
+                            label={row.estado}
                             size="small"
-                            color={row.estatus === 'ACTIVO' ? 'success' : 'default'}
+                            color={row.estado === 'ACTIVO' ? 'success' : 'default'}
                           />
                         </TableCell>
-                        <TableCell>{row.total_fojas}</TableCell>
+                        <TableCell>{row.total_hojas}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

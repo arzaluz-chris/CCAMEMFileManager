@@ -80,7 +80,7 @@ const Digitalizacion = () => {
    */
   const cargarExpedientes = async () => {
     try {
-      const response = await axios.get('/expedientes?estatus=ACTIVO&limit=100');
+      const response = await axios.get('/expedientes?estado=activo&limit=100');
       setExpedientes(response.data.expedientes);
     } catch (error) {
       console.error('Error al cargar expedientes:', error);
@@ -356,10 +356,10 @@ const Digitalizacion = () => {
                     <strong>Asunto:</strong> {selectedExpediente.asunto}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Fojas actuales:</strong> {selectedExpediente.total_fojas}
+                    <strong>Fojas actuales:</strong> {selectedExpediente.total_hojas}
                   </Typography>
                   <Chip
-                    label={selectedExpediente.estatus}
+                    label={selectedExpediente.estado}
                     size="small"
                     color="success"
                     sx={{ mt: 1 }}
