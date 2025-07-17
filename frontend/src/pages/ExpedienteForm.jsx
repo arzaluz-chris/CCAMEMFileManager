@@ -59,10 +59,10 @@ const ExpedienteForm = () => {
     numero_legajos: '',
     ubicacion_fisica: '',
     valoresDocumentales: [],
-    vigencia_documental: '',
-    tiempo_conservacion_archivo_tramite: '',
-    tiempo_conservacion_archivo_concentracion: '',
-    destino_final: '',
+    archivo_tramite: '',
+    archivo_concentracion: '',
+    clasificacion_informacion: "publica",
+    destino_final: 'conservacion',
     observaciones: '',
     estado: 'activo'
   });
@@ -317,8 +317,8 @@ const ExpedienteForm = () => {
     if (formData.valoresDocumentales.length === 0) {
       nuevosErrores.valoresDocumentales = 'Seleccione al menos un valor documental';
     }
-    if (!formData.vigencia_documental) {
-      nuevosErrores.vigencia_documental = 'La vigencia documental es requerida';
+    if (!formData.clasificacion_informacion) {
+      nuevosErrores.clasificacion_informacion = "La clasificación es requerida";
     }
     if (!formData.destino_final) {
       nuevosErrores.destino_final = 'El destino final es requerido';
@@ -357,8 +357,8 @@ const ExpedienteForm = () => {
         valor_juridico: valoresDocumentales.includes('legal'),
         valor_fiscal: valoresDocumentales.includes('fiscal'),
         valor_contable: valoresDocumentales.includes('contable'),
-        tiempo_conservacion_archivo_tramite: formData.tiempo_conservacion_archivo_tramite ? parseInt(formData.tiempo_conservacion_archivo_tramite) : null,
-        tiempo_conservacion_archivo_concentracion: formData.tiempo_conservacion_archivo_concentracion ? parseInt(formData.tiempo_conservacion_archivo_concentracion) : null,
+        archivo_tramite: formData.archivo_tramite ? parseInt(formData.archivo_tramite) : null,
+        archivo_concentracion: formData.archivo_concentracion ? parseInt(formData.archivo_concentracion) : null,
         // Formatear fechas a ISO string
         fecha_apertura: formData.fecha_apertura.toISOString(),
         fecha_cierre: formData.fecha_cierre ? formData.fecha_cierre.toISOString() : null
@@ -721,27 +721,14 @@ const ExpedienteForm = () => {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  label="Vigencia Documental"
-                  name="vigencia_documental"
-                  value={formData.vigencia_documental}
-                  onChange={handleChange}
-                  error={!!errors.vigencia_documental}
-                  helperText={errors.vigencia_documental}
-                  required
-                  placeholder="Ej: 5 años"
-                />
-              </Grid>
 
               <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
                   label="Tiempo en Archivo de Trámite (años)"
-                  name="tiempo_conservacion_archivo_tramite"
+                  name="archivo_tramite"
                   type="number"
-                  value={formData.tiempo_conservacion_archivo_tramite}
+                  value={formData.archivo_tramite}
                   onChange={handleChange}
                   InputProps={{ inputProps: { min: 0 } }}
                 />
@@ -751,12 +738,23 @@ const ExpedienteForm = () => {
                 <TextField
                   fullWidth
                   label="Tiempo en Archivo de Concentración (años)"
-                  name="tiempo_conservacion_archivo_concentracion"
+                  name="archivo_concentracion"
                   type="number"
-                  value={formData.tiempo_conservacion_archivo_concentracion}
+                  value={formData.archivo_concentracion}
                   onChange={handleChange}
                   InputProps={{ inputProps: { min: 0 } }}
                 />
+              </Grid>
+              <Grid item xs="12" md="4">
+                <FormControl fullWidth error={!!errors.clasificacion_informacion} required>
+                  <InputLabel>Clasificación</InputLabel>
+                  <Select name="clasificacion_informacion" value={formData.clasificacion_informacion} onChange={handleChange} label="Clasificación">
+                    <MenuItem value="publica">Pública</MenuItem>
+                    <MenuItem value="reservada">Reservada</MenuItem>
+                    <MenuItem value="confidencial">Confidencial</MenuItem>
+                  </Select>
+                  {errors.clasificacion_informacion && <FormHelperText>{errors.clasificacion_informacion}</FormHelperText>}
+                </FormControl>
               </Grid>
 
               <Grid item xs={12} md={4}>
@@ -768,9 +766,8 @@ const ExpedienteForm = () => {
                     onChange={handleChange}
                     label="Destino Final"
                   >
-                    <MenuItem value="CONSERVACION">Conservación</MenuItem>
-                    <MenuItem value="ELIMINACION">Eliminación</MenuItem>
-                    <MenuItem value="MUESTREO">Muestreo</MenuItem>
+                    <MenuItem value="conservacion">Conservación</MenuItem>
+                    <MenuItem value="baja">Eliminación</MenuItem>
                   </Select>
                   {errors.destino_final && <FormHelperText>{errors.destino_final}</FormHelperText>}
                 </FormControl>

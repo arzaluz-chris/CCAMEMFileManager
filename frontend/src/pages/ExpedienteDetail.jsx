@@ -413,27 +413,12 @@ const ExpedienteDetail = () => {
                   <CardContent>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={3}>
-                        <Typography color="text.secondary" variant="body2">
-                          Valor Documental
-                        </Typography>
-                        <Typography variant="body1">
-                          {expediente.valor_documental}
-                        </Typography>
-                      </Grid>
-                      <Grid item xs={12} md={3}>
-                        <Typography color="text.secondary" variant="body2">
-                          Vigencia Documental
-                        </Typography>
-                        <Typography variant="body1">
-                          {expediente.vigencia_documental}
-                        </Typography>
-                      </Grid>
                       <Grid item xs={12} md={3}>
                         <Typography color="text.secondary" variant="body2">
                           Archivo de Trámite
                         </Typography>
                         <Typography variant="body1">
-                          {expediente.tiempo_conservacion_archivo_tramite || 0} años
+                          {expediente.archivo_tramite || 0} años
                         </Typography>
                       </Grid>
                       <Grid item xs={12} md={3}>
@@ -441,7 +426,7 @@ const ExpedienteDetail = () => {
                           Archivo de Concentración
                         </Typography>
                         <Typography variant="body1">
-                          {expediente.tiempo_conservacion_archivo_concentracion || 0} años
+                          {expediente.archivo_concentracion || 0} años
                         </Typography>
                       </Grid>
                       <Grid item xs={12}>
@@ -452,6 +437,14 @@ const ExpedienteDetail = () => {
                           {expediente.destino_final}
                         </Typography>
                       </Grid>
+                        <Grid item xs="12">
+                          <Typography color="text.secondary" variant="body2">
+                            Clasificación
+                          </Typography>
+                          <Typography variant="body1">
+                            {expediente.clasificacion_informacion}
+                          </Typography>
+                        </Grid>
                     </Grid>
                   </CardContent>
                 </Card>
