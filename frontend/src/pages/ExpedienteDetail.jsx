@@ -413,7 +413,6 @@ const ExpedienteDetail = () => {
                   <CardContent>
                     <Grid container spacing={2}>
                       <Grid item xs={12} md={3}>
-                      <Grid item xs={12} md={3}>
                         <Typography color="text.secondary" variant="body2">
                           Archivo de Trámite
                         </Typography>
