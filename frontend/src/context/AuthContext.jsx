@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }) => {
    * Verificar autenticación al cargar la aplicación
    */
   useEffect(() => {
+    console.log('🔄 AuthProvider: Iniciando verificación de autenticación');
     checkAuthStatus();
   }, []);
 
@@ -37,33 +38,56 @@ export const AuthProvider = ({ children }) => {
    */
   const checkAuthStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
+      setLoading(true);
+      
+      // IMPORTANTE: Usar el mismo nombre de token en toda la aplicación
+      const token = localStorage.getItem('ccamem_token');
+      const userData = localStorage.getItem('ccamem_user');
 
       console.log('🔍 Verificando estado de autenticación...');
       console.log('Token encontrado:', !!token);
       console.log('Datos de usuario encontrados:', !!userData);
 
-      if (!token || !userData) {
-        console.log('❌ No hay token o datos de usuario');
+      if (!token) {
+        console.log('❌ No hay token almacenado');
         setLoading(false);
         return;
       }
 
-      // Verificar si el token es válido
+      // Verificar si el token es válido haciendo una petición al backend
       try {
+        console.log('📡 Verificando token con el backend...');
         const response = await apiClient.get('/auth/verify');
         
+        console.log('📥 Respuesta de verificación:', response.data);
+
         if (response.data.success && response.data.user) {
           console.log('✅ Token válido, usuario autenticado:', response.data.user.email);
           setUser(response.data.user);
+          setError(null);
         } else {
-          console.log('❌ Token inválido, limpiando sesión');
+          console.log('❌ Token inválido según backend, limpiando sesión');
           clearAuthData();
         }
       } catch (verifyError) {
         console.log('❌ Error verificando token:', verifyError.message);
-        clearAuthData();
+        
+        // Si el error es 401 (no autorizado), limpiar datos
+        if (verifyError.response?.status === 401) {
+          console.log('🔄 Token expirado o inválido, limpiando sesión');
+          clearAuthData();
+        } else {
+          // Para otros errores, mantener la sesión pero marcar error
+          console.log('⚠️ Error de red, manteniendo sesión local');
+          if (userData) {
+            try {
+              setUser(JSON.parse(userData));
+            } catch (parseError) {
+              console.log('❌ Error parseando datos de usuario');
+              clearAuthData();
+            }
+          }
+        }
       }
 
     } catch (error) {
@@ -78,8 +102,9 @@ export const AuthProvider = ({ children }) => {
    * Limpiar datos de autenticación
    */
   const clearAuthData = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    console.log('🧹 Limpiando datos de autenticación');
+    localStorage.removeItem('ccamem_token');
+    localStorage.removeItem('ccamem_user');
     setUser(null);
     setError(null);
   };
@@ -101,40 +126,42 @@ export const AuthProvider = ({ children }) => {
 
       console.log('📝 Respuesta del login:', response.data);
 
-      if (response.data.success && response.data.token && response.data.user) {
+      if (response.data.success && response.data.token) {
+        console.log('✅ Login exitoso, guardando datos');
+        
         // Guardar token y datos del usuario
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-
+        localStorage.setItem('ccamem_token', response.data.token);
+        localStorage.setItem('ccamem_user', JSON.stringify(response.data.user));
+        
         // Actualizar estado
         setUser(response.data.user);
         setError(null);
-
-        console.log('✅ Login exitoso, usuario:', response.data.user.email);
-
-        return {
-          success: true,
-          user: response.data.user
-        };
+        
+        console.log('✅ Datos guardados correctamente');
+        return { success: true, user: response.data.user };
       } else {
-        throw new Error('Respuesta de login inválida');
+        console.log('❌ Login fallido:', response.data.error);
+        setError(response.data.error || 'Error en el login');
+        return { success: false, error: response.data.error };
       }
 
     } catch (error) {
       console.error('❌ Error en login:', error);
       
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          error.message || 
-                          'Error al iniciar sesión';
+      let errorMessage = 'Error al iniciar sesión';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Credenciales incorrectas';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Error del servidor. Intente más tarde.';
+      } else if (error.message === 'Network Error') {
+        errorMessage = 'Error de conexión. Verifique su conexión a internet.';
+      }
       
       setError(errorMessage);
-      clearAuthData();
-
-      return {
-        success: false,
-        error: errorMessage
-      };
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
@@ -146,23 +173,25 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       console.log('🚪 Cerrando sesión...');
-
-      // Intentar notificar al backend (opcional)
+      
+      // Opcional: notificar al backend sobre el logout
       try {
         await apiClient.post('/auth/logout');
       } catch (logoutError) {
-        console.log('⚠️ Error notificando logout al backend (no crítico)');
+        console.log('⚠️ Error notificando logout al backend:', logoutError.message);
       }
-
+      
       // Limpiar datos locales
       clearAuthData();
-
-      console.log('✅ Sesión cerrada exitosamente');
-
+      
+      console.log('✅ Sesión cerrada correctamente');
+      return { success: true };
+      
     } catch (error) {
       console.error('❌ Error en logout:', error);
-      // Limpiar datos aunque haya error
+      // Aún así limpiar datos locales
       clearAuthData();
+      return { success: false, error: error.message };
     }
   };
 
@@ -170,89 +199,34 @@ export const AuthProvider = ({ children }) => {
    * Actualizar datos del usuario
    */
   const updateUser = (userData) => {
-    console.log('🔄 Actualizando datos del usuario');
-    
+    console.log('🔄 Actualizando datos del usuario:', userData);
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  /**
-   * Cambiar contraseña
-   */
-  const changePassword = async (currentPassword, newPassword) => {
-    try {
-      setError(null);
-
-      const response = await apiClient.put('/auth/change-password', {
-        currentPassword,
-        newPassword
-      });
-
-      return {
-        success: true,
-        message: response.data.message || 'Contraseña actualizada exitosamente'
-      };
-
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          'Error al cambiar contraseña';
-      
-      setError(errorMessage);
-      
-      return {
-        success: false,
-        error: errorMessage
-      };
-    }
+    localStorage.setItem('ccamem_user', JSON.stringify(userData));
   };
 
   /**
    * Verificar si el usuario tiene un rol específico
    */
-  const hasRole = (role) => {
-    return user?.rol === role;
+  const hasRole = (roles) => {
+    if (!user) return false;
+    
+    const userRoles = Array.isArray(user.rol) ? user.rol : [user.rol];
+    const requiredRoles = Array.isArray(roles) ? roles : [roles];
+    
+    return requiredRoles.some(role => userRoles.includes(role));
   };
 
-  /**
-   * Verificar si el usuario tiene permisos de administrador
-   */
-  const isAdmin = () => {
-    return hasRole('admin');
-  };
-
-  /**
-   * Verificar si el usuario está autenticado
-   */
-  const isAuthenticated = () => {
-    return !!user;
-  };
-
-  // Valor del contexto
+  // Valores del contexto
   const contextValue = {
-    // Estado
     user,
     loading,
     error,
-    
-    // Funciones de autenticación
     login,
     logout,
     updateUser,
-    changePassword,
-    checkAuthStatus,
-    
-    // Funciones de verificación
-    isAuthenticated: isAuthenticated(),
-    isAdmin: isAdmin(),
     hasRole,
-    
-    // Datos del usuario
-    userId: user?.id,
-    userEmail: user?.email,
-    userRole: user?.rol,
-    userArea: user?.area,
-    userName: user?.nombre
+    checkAuthStatus,
+    isAuthenticated: !!user
   };
 
   return (
@@ -262,5 +236,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export { AuthContext };
 export default AuthProvider;

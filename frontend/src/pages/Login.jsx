@@ -15,7 +15,8 @@ import {
   IconButton,
   CircularProgress,
   Container,
-  Paper
+  Paper,
+  Divider
 } from '@mui/material';
 import {
   Visibility,
@@ -32,7 +33,7 @@ import { useAuth } from '../context/AuthContext';
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, user, loading, error } = useAuth();
+  const { login, user, loading, error, isAuthenticated } = useAuth();
 
   // Estados locales
   const [formData, setFormData] = useState({
@@ -42,15 +43,22 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+  const [loginError, setLoginError] = useState('');
 
   // Redirigir si ya está autenticado
   useEffect(() => {
-    if (user && !loading) {
+    console.log('🔍 Login - Verificando estado de autenticación:', {
+      isAuthenticated,
+      user: user?.email,
+      loading
+    });
+
+    if (isAuthenticated && user && !loading) {
       const from = location.state?.from?.pathname || '/dashboard';
       console.log('✅ Usuario ya autenticado, redirigiendo a:', from);
       navigate(from, { replace: true });
     }
-  }, [user, loading, navigate, location]);
+  }, [isAuthenticated, user, loading, navigate, location]);
 
   /**
    * Manejar cambios en el formulario
@@ -70,6 +78,11 @@ function Login() {
         [name]: ''
       }));
     }
+
+    // Limpiar error de login
+    if (loginError) {
+      setLoginError('');
+    }
   };
 
   /**
@@ -81,11 +94,13 @@ function Login() {
     if (!formData.email.trim()) {
       errors.email = 'El email es requerido';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Formato de email inválido';
+      errors.email = 'El email no tiene un formato válido';
     }
 
-    if (!formData.password) {
+    if (!formData.password.trim()) {
       errors.password = 'La contraseña es requerida';
+    } else if (formData.password.length < 3) {
+      errors.password = 'La contraseña debe tener al menos 3 caracteres';
     }
 
     return errors;
@@ -96,7 +111,7 @@ function Login() {
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    
     // Validar formulario
     const errors = validateForm();
     if (Object.keys(errors).length > 0) {
@@ -105,30 +120,34 @@ function Login() {
     }
 
     setIsSubmitting(true);
+    setLoginError('');
+    setFormErrors({});
 
     try {
-      console.log('🔐 Enviando datos de login...');
+      console.log('🔐 Iniciando proceso de login...');
       
       const result = await login(formData.email, formData.password);
+      
+      console.log('📝 Resultado del login:', result);
 
       if (result.success) {
-        console.log('✅ Login exitoso');
+        console.log('✅ Login exitoso, preparando redirección...');
         
-        // Redirigir al dashboard o a la página solicitada
-        const from = location.state?.from?.pathname || '/dashboard';
-        navigate(from, { replace: true });
+        // Pequeña demora para asegurar que el estado se actualice
+        setTimeout(() => {
+          const from = location.state?.from?.pathname || '/dashboard';
+          console.log('🔄 Redirigiendo a:', from);
+          navigate(from, { replace: true });
+        }, 100);
+        
       } else {
         console.log('❌ Login fallido:', result.error);
-        setFormErrors({ 
-          general: result.error || 'Error al iniciar sesión' 
-        });
+        setLoginError(result.error || 'Error al iniciar sesión');
       }
 
-    } catch (err) {
-      console.error('❌ Error inesperado en login:', err);
-      setFormErrors({ 
-        general: 'Error inesperado. Intenta nuevamente.' 
-      });
+    } catch (error) {
+      console.error('❌ Error en handleSubmit:', error);
+      setLoginError('Error inesperado al iniciar sesión');
     } finally {
       setIsSubmitting(false);
     }
@@ -137,172 +156,170 @@ function Login() {
   /**
    * Alternar visibilidad de contraseña
    */
-  const handleTogglePasswordVisibility = () => {
+  const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  // Mostrar spinner mientras se verifica autenticación inicial
+  // Manejar caso de tecla Enter
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSubmit(e);
+    }
+  };
+
+  // Mostrar loading si se está verificando autenticación
   if (loading) {
     return (
       <Box
         display="flex"
-        justifyContent="center"
+        flexDirection="column"
         alignItems="center"
+        justifyContent="center"
         minHeight="100vh"
-        bgcolor="background.default"
+        gap={2}
       >
-        <CircularProgress size={60} />
+        <CircularProgress size={40} />
+        <Typography variant="body1" color="textSecondary">
+          Verificando autenticación...
+        </Typography>
+      </Box>
+    );
+  }
+
+  // Si ya está autenticado, no mostrar formulario
+  if (isAuthenticated && user) {
+    return (
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        minHeight="100vh"
+        gap={2}
+      >
+        <CircularProgress size={40} />
+        <Typography variant="body1" color="textSecondary">
+          Redirigiendo...
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 2
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            borderRadius: 4,
-            overflow: 'hidden',
-            boxShadow: '0 32px 64px rgba(0, 0, 0, 0.2)'
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-              color: 'white',
-              py: 4,
-              textAlign: 'center'
-            }}
-          >
-            <Typography variant="h4" component="h1" fontWeight={700} gutterBottom>
-              CCAMEM
-            </Typography>
-            <Typography variant="h6" sx={{ opacity: 0.9 }}>
-              Sistema de Gestión de Archivos
-            </Typography>
-          </Box>
+    <Container maxWidth="sm">
+      <Box
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        minHeight="100vh"
+        py={4}
+      >
+        <Paper elevation={8} sx={{ width: '100%', maxWidth: 400 }}>
+          <Card>
+            <CardContent sx={{ p: 4 }}>
+              {/* Header */}
+              <Box textAlign="center" mb={3}>
+                <Typography variant="h4" component="h1" gutterBottom>
+                  CCAMEM
+                </Typography>
+                <Typography variant="h6" color="textSecondary">
+                  Iniciar Sesión
+                </Typography>
+              </Box>
 
-          {/* Formulario */}
-          <CardContent sx={{ p: 4 }}>
-            <Typography variant="h5" component="h2" gutterBottom textAlign="center" mb={3}>
-              Iniciar Sesión
-            </Typography>
+              <Divider sx={{ my: 2 }} />
 
-            {/* Error general */}
-            {(error || formErrors.general) && (
-              <Alert severity="error" sx={{ mb: 3 }}>
-                {error || formErrors.general}
-              </Alert>
-            )}
+              {/* Error general */}
+              {(loginError || error) && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {loginError || error}
+                </Alert>
+              )}
 
-            <Box component="form" onSubmit={handleSubmit} noValidate>
-              {/* Campo de email */}
-              <TextField
-                fullWidth
-                margin="normal"
-                name="email"
-                label="Correo Electrónico"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                error={!!formErrors.email}
-                helperText={formErrors.email}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Person color={formErrors.email ? 'error' : 'action'} />
-                    </InputAdornment>
-                  ),
-                }}
-                disabled={isSubmitting}
-                autoComplete="email"
-                autoFocus
-                sx={{ mb: 2 }}
-              />
+              {/* Formulario */}
+              <Box component="form" onSubmit={handleSubmit} noValidate>
+                <TextField
+                  fullWidth
+                  id="email"
+                  name="email"
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  error={!!formErrors.email}
+                  helperText={formErrors.email}
+                  margin="normal"
+                  required
+                  autoComplete="email"
+                  autoFocus
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Person />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
 
-              {/* Campo de contraseña */}
-              <TextField
-                fullWidth
-                margin="normal"
-                name="password"
-                label="Contraseña"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleInputChange}
-                error={!!formErrors.password}
-                helperText={formErrors.password}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Lock color={formErrors.password ? 'error' : 'action'} />
-                    </InputAdornment>
-                  ),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        aria-label="toggle password visibility"
-                        onClick={handleTogglePasswordVisibility}
-                        edge="end"
-                        disabled={isSubmitting}
-                      >
-                        {showPassword ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                }}
-                disabled={isSubmitting}
-                autoComplete="current-password"
-                sx={{ mb: 3 }}
-              />
+                <TextField
+                  fullWidth
+                  id="password"
+                  name="password"
+                  label="Contraseña"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  error={!!formErrors.password}
+                  helperText={formErrors.password}
+                  margin="normal"
+                  required
+                  autoComplete="current-password"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <Lock />
+                      </InputAdornment>
+                    ),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          aria-label="toggle password visibility"
+                          onClick={togglePasswordVisibility}
+                          edge="end"
+                        >
+                          {showPassword ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
 
-              {/* Botón de envío */}
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                size="large"
-                disabled={isSubmitting}
-                startIcon={isSubmitting ? <CircularProgress size={20} /> : <LoginIcon />}
-                sx={{
-                  mt: 2,
-                  mb: 2,
-                  py: 1.5,
-                  fontSize: '1.1rem',
-                  fontWeight: 600,
-                  background: 'linear-gradient(45deg, #1976d2 30%, #42a5f5 90%)',
-                  '&:hover': {
-                    background: 'linear-gradient(45deg, #1565c0 30%, #1976d2 90%)',
-                  }
-                }}
-              >
-                {isSubmitting ? 'Iniciando Sesión...' : 'Iniciar Sesión'}
-              </Button>
-            </Box>
+                <Button
+                  type="submit"
+                  fullWidth
+                  variant="contained"
+                  disabled={isSubmitting}
+                  sx={{ mt: 3, mb: 2, py: 1.5 }}
+                  startIcon={isSubmitting ? <CircularProgress size={20} /> : <LoginIcon />}
+                >
+                  {isSubmitting ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                </Button>
+              </Box>
 
-            {/* Información adicional */}
-            <Box sx={{ mt: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                Comisión de Conciliación y Arbitraje Médico del Estado de México
-              </Typography>
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                Versión 1.0.0 - Sistema de Gestión Documental
-              </Typography>
-            </Box>
-          </CardContent>
+              {/* Información adicional */}
+              <Box mt={3}>
+                <Typography variant="body2" color="textSecondary" textAlign="center">
+                  Sistema de Gestión de Archivos CCAMEM
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
         </Paper>
-      </Container>
-    </Box>
+      </Box>
+    </Container>
   );
 }
 

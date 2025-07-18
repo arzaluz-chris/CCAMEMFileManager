@@ -1,7 +1,7 @@
 // === ARCHIVO: backend/controllers/authController.js ===
 // Controlador de autenticación para el sistema CCAMEM
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 
@@ -14,19 +14,19 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
         
-        console.log(`🔐 Intento de login: ${email}`);
+        console.log('🔐 Intento de login para:', email);
         
-        // Validar campos requeridos
+        // Validar que se proporcionen email y password
         if (!email || !password) {
+            console.log('❌ Email o password faltantes');
             return res.status(400).json({
                 success: false,
                 error: 'Email y contraseña son requeridos'
             });
         }
-
-        console.log('🔍 Buscando usuario en la base de datos...');
         
-        // Buscar usuario por email
+        // Buscar usuario en la base de datos
+        console.log('🔍 Buscando usuario en base de datos...');
         const userQuery = `
             SELECT 
                 u.id, 
@@ -42,12 +42,10 @@ const login = async (req, res) => {
             WHERE LOWER(u.email) = LOWER($1)
         `;
         
-        const userResult = await pool.query(userQuery, [email]);
-        
-        console.log(`📊 Usuarios encontrados: ${userResult.rows.length}`);
+        const userResult = await pool.query(userQuery, [email.trim()]);
         
         if (userResult.rows.length === 0) {
-            console.log('❌ Usuario no encontrado');
+            console.log('❌ Usuario no encontrado:', email);
             return res.status(401).json({
                 success: false,
                 error: 'Credenciales incorrectas'
@@ -55,11 +53,11 @@ const login = async (req, res) => {
         }
         
         const user = userResult.rows[0];
-        console.log(`✅ Usuario encontrado: ${user.email}`);
+        console.log('✅ Usuario encontrado:', user.email);
         
         // Verificar que el usuario esté activo
         if (!user.activo) {
-            console.log('❌ Usuario inactivo');
+            console.log('❌ Usuario inactivo:', user.email);
             return res.status(401).json({
                 success: false,
                 error: 'Usuario inactivo. Contacta al administrador.'
@@ -72,7 +70,7 @@ const login = async (req, res) => {
         console.log(`🔑 Contraseña válida: ${isValidPassword}`);
         
         if (!isValidPassword) {
-            console.log('❌ Contraseña incorrecta');
+            console.log('❌ Contraseña incorrecta para:', user.email);
             return res.status(401).json({
                 success: false,
                 error: 'Credenciales incorrectas'
@@ -91,8 +89,14 @@ const login = async (req, res) => {
         const token = jwt.sign(
             tokenPayload, 
             process.env.JWT_SECRET || 'ccamem_secret_key',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '24h' }
+            { 
+                expiresIn: process.env.JWT_EXPIRES_IN || '24h',
+                issuer: 'ccamem-system',
+                audience: 'ccamem-users'
+            }
         );
+        
+        console.log('✅ Token generado exitosamente');
         
         // Actualizar último acceso
         try {
@@ -100,11 +104,12 @@ const login = async (req, res) => {
                 'UPDATE usuarios SET ultimo_acceso = CURRENT_TIMESTAMP WHERE id = $1',
                 [user.id]
             );
+            console.log('✅ Último acceso actualizado');
         } catch (updateError) {
-            console.log('⚠️ No se pudo actualizar último acceso');
+            console.log('⚠️ No se pudo actualizar último acceso:', updateError.message);
         }
         
-        // Intentar registrar en historial (si existe la tabla)
+        // Registrar en historial (si existe la tabla)
         try {
             await pool.query(`
                 INSERT INTO historial_cambios 
@@ -112,10 +117,12 @@ const login = async (req, res) => {
                 VALUES ('usuarios', $1, $2, 'LOGIN', $3)
             `, [user.id, user.id, JSON.stringify({ 
                 timestamp: new Date(),
-                ip: req.ip || req.connection.remoteAddress 
+                ip: req.ip || req.connection.remoteAddress,
+                userAgent: req.get('User-Agent')
             })]);
+            console.log('✅ Login registrado en historial');
         } catch (historialError) {
-            console.log('⚠️ Error al registrar historial (no crítico):', historialError.message);
+            console.log('⚠️ No se pudo registrar en historial:', historialError.message);
         }
         
         // Preparar datos del usuario para la respuesta (sin contraseña)
@@ -131,6 +138,7 @@ const login = async (req, res) => {
         
         console.log(`✅ Login exitoso para: ${user.email}`);
         
+        // Respuesta exitosa
         res.json({
             success: true,
             message: 'Login exitoso',
@@ -155,17 +163,41 @@ const login = async (req, res) => {
  */
 const verifyToken = async (req, res) => {
     try {
-        const token = req.headers.authorization?.replace('Bearer ', '');
+        console.log('🔍 Verificando token JWT...');
         
-        if (!token) {
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader) {
+            console.log('❌ No se encontró header Authorization');
             return res.status(401).json({
                 success: false,
                 error: 'Token no proporcionado'
             });
         }
         
+        const token = authHeader.replace('Bearer ', '');
+        
+        if (!token) {
+            console.log('❌ Token vacío');
+            return res.status(401).json({
+                success: false,
+                error: 'Token no proporcionado'
+            });
+        }
+        
+        console.log('🔑 Verificando token...');
+        
         // Verificar y decodificar token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'ccamem_secret_key');
+        const decoded = jwt.verify(
+            token, 
+            process.env.JWT_SECRET || 'ccamem_secret_key',
+            {
+                issuer: 'ccamem-system',
+                audience: 'ccamem-users'
+            }
+        );
+        
+        console.log('✅ Token válido, buscando usuario actual...');
         
         // Buscar usuario actual en la base de datos
         const userQuery = `
@@ -179,20 +211,33 @@ const verifyToken = async (req, res) => {
                 a.nombre as area_nombre
             FROM usuarios u
             LEFT JOIN areas a ON u.area = a.codigo
-            WHERE u.id = $1 AND u.activo = true
+            WHERE u.id = $1
         `;
         
         const userResult = await pool.query(userQuery, [decoded.id]);
         
         if (userResult.rows.length === 0) {
+            console.log('❌ Usuario no encontrado para token válido');
             return res.status(401).json({
                 success: false,
-                error: 'Usuario no válido o inactivo'
+                error: 'Usuario no válido'
             });
         }
         
         const user = userResult.rows[0];
         
+        // Verificar que el usuario siga activo
+        if (!user.activo) {
+            console.log('❌ Usuario inactivo:', user.email);
+            return res.status(401).json({
+                success: false,
+                error: 'Usuario inactivo'
+            });
+        }
+        
+        console.log('✅ Token verificado exitosamente para:', user.email);
+        
+        // Respuesta exitosa
         res.json({
             success: true,
             user: {
@@ -210,6 +255,7 @@ const verifyToken = async (req, res) => {
         console.error('❌ Error al verificar token:', error);
         
         if (error.name === 'JsonWebTokenError') {
+            console.log('❌ Token JWT malformado');
             return res.status(401).json({
                 success: false,
                 error: 'Token inválido'
@@ -217,12 +263,22 @@ const verifyToken = async (req, res) => {
         }
         
         if (error.name === 'TokenExpiredError') {
+            console.log('❌ Token JWT expirado');
             return res.status(401).json({
                 success: false,
                 error: 'Token expirado'
             });
         }
         
+        if (error.name === 'NotBeforeError') {
+            console.log('❌ Token JWT no válido aún');
+            return res.status(401).json({
+                success: false,
+                error: 'Token no válido'
+            });
+        }
+        
+        console.error('❌ Error interno al verificar token');
         res.status(500).json({
             success: false,
             error: 'Error al verificar token'
@@ -237,24 +293,30 @@ const verifyToken = async (req, res) => {
  */
 const logout = async (req, res) => {
     try {
-        // En un sistema con JWT, el logout se maneja en el frontend
-        // removiendo el token del localStorage
+        console.log('🚪 Procesando logout...');
         
-        // Registrar logout en historial (si existe la tabla)
-        try {
-            if (req.user) {
+        // En un sistema con JWT, el logout se maneja principalmente en el frontend
+        // removiendo el token del localStorage. Aquí podemos registrar el logout.
+        
+        // Registrar logout en historial si el usuario está disponible
+        if (req.user) {
+            try {
                 await pool.query(`
                     INSERT INTO historial_cambios 
                     (tabla_afectada, registro_id, usuario_id, accion, datos_nuevos)
                     VALUES ('usuarios', $1, $2, 'LOGOUT', $3)
                 `, [req.user.id, req.user.id, JSON.stringify({ 
                     timestamp: new Date(),
-                    ip: req.ip || req.connection.remoteAddress 
+                    ip: req.ip || req.connection.remoteAddress,
+                    userAgent: req.get('User-Agent')
                 })]);
+                console.log('✅ Logout registrado en historial para:', req.user.email);
+            } catch (historialError) {
+                console.log('⚠️ No se pudo registrar logout en historial:', historialError.message);
             }
-        } catch (historialError) {
-            console.log('⚠️ No se pudo registrar logout en historial');
         }
+        
+        console.log('✅ Logout procesado exitosamente');
         
         res.json({
             success: true,
@@ -280,6 +342,8 @@ const changePassword = async (req, res) => {
         const { currentPassword, newPassword } = req.body;
         const userId = req.user.id;
         
+        console.log('🔑 Cambiando contraseña para usuario:', req.user.email);
+        
         // Validar campos
         if (!currentPassword || !newPassword) {
             return res.status(400).json({
@@ -295,9 +359,11 @@ const changePassword = async (req, res) => {
             });
         }
         
-        // Obtener usuario actual
-        const userQuery = 'SELECT password FROM usuarios WHERE id = $1';
-        const userResult = await pool.query(userQuery, [userId]);
+        // Buscar usuario actual
+        const userResult = await pool.query(
+            'SELECT password FROM usuarios WHERE id = $1',
+            [userId]
+        );
         
         if (userResult.rows.length === 0) {
             return res.status(404).json({
@@ -309,43 +375,44 @@ const changePassword = async (req, res) => {
         const user = userResult.rows[0];
         
         // Verificar contraseña actual
-        const isValidCurrentPassword = await bcrypt.compare(currentPassword, user.password);
+        const isValidPassword = await bcrypt.compare(currentPassword, user.password);
         
-        if (!isValidCurrentPassword) {
-            return res.status(400).json({
+        if (!isValidPassword) {
+            return res.status(401).json({
                 success: false,
                 error: 'Contraseña actual incorrecta'
             });
         }
         
-        // Hashear nueva contraseña
-        const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+        // Encriptar nueva contraseña
+        const saltRounds = 12;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
         
-        // Actualizar contraseña
+        // Actualizar contraseña en base de datos
         await pool.query(
-            'UPDATE usuarios SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-            [hashedNewPassword, userId]
+            'UPDATE usuarios SET password = $1 WHERE id = $2',
+            [hashedPassword, userId]
         );
         
-        // Registrar cambio en historial (si existe la tabla)
+        // Registrar cambio en historial
         try {
             await pool.query(`
                 INSERT INTO historial_cambios 
                 (tabla_afectada, registro_id, usuario_id, accion, datos_nuevos)
-                VALUES ('usuarios', $1, $2, 'PASSWORD_CHANGE', $3)
+                VALUES ('usuarios', $1, $2, 'CHANGE_PASSWORD', $3)
             `, [userId, userId, JSON.stringify({ 
                 timestamp: new Date(),
-                ip: req.ip || req.connection.remoteAddress 
+                ip: req.ip || req.connection.remoteAddress
             })]);
         } catch (historialError) {
             console.log('⚠️ No se pudo registrar cambio de contraseña en historial');
         }
         
-        console.log(`✅ Contraseña cambiada para usuario ID: ${userId}`);
+        console.log('✅ Contraseña cambiada exitosamente para:', req.user.email);
         
         res.json({
             success: true,
-            message: 'Contraseña actualizada exitosamente'
+            message: 'Contraseña cambiada exitosamente'
         });
         
     } catch (error) {
@@ -358,142 +425,35 @@ const changePassword = async (req, res) => {
 };
 
 /**
- * Obtener información del usuario actual
+ * Obtener perfil del usuario actual
  * @param {Request} req - Request de Express
  * @param {Response} res - Response de Express
  */
 const getProfile = async (req, res) => {
     try {
-        const userId = req.user.id;
+        console.log('👤 Obteniendo perfil para:', req.user.email);
         
-        const userQuery = `
-            SELECT 
-                u.id, 
-                u.nombre, 
-                u.email, 
-                u.rol, 
-                u.area,
-                u.activo,
-                u.created_at,
-                u.ultimo_acceso,
-                a.nombre as area_nombre
-            FROM usuarios u
-            LEFT JOIN areas a ON u.area = a.codigo
-            WHERE u.id = $1
-        `;
-        
-        const userResult = await pool.query(userQuery, [userId]);
-        
-        if (userResult.rows.length === 0) {
-            return res.status(404).json({
-                success: false,
-                error: 'Usuario no encontrado'
-            });
-        }
-        
-        const user = userResult.rows[0];
+        // El usuario ya está disponible en req.user gracias al middleware
+        const userData = {
+            id: req.user.id,
+            nombre: req.user.nombre,
+            email: req.user.email,
+            rol: req.user.rol,
+            area: req.user.area,
+            area_nombre: req.user.area_nombre,
+            activo: req.user.activo
+        };
         
         res.json({
             success: true,
-            user: {
-                id: user.id,
-                nombre: user.nombre,
-                email: user.email,
-                rol: user.rol,
-                area: user.area,
-                area_nombre: user.area_nombre,
-                activo: user.activo,
-                created_at: user.created_at,
-                ultimo_acceso: user.ultimo_acceso
-            }
+            user: userData
         });
         
     } catch (error) {
         console.error('❌ Error al obtener perfil:', error);
         res.status(500).json({
             success: false,
-            error: 'Error al obtener perfil del usuario'
-        });
-    }
-};
-
-/**
- * Actualizar perfil del usuario
- * @param {Request} req - Request de Express
- * @param {Response} res - Response de Express
- */
-const updateProfile = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const { nombre, email } = req.body;
-        
-        // Validar campos
-        if (!nombre || !email) {
-            return res.status(400).json({
-                success: false,
-                error: 'Nombre y email son requeridos'
-            });
-        }
-        
-        // Validar formato de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({
-                success: false,
-                error: 'Formato de email inválido'
-            });
-        }
-        
-        // Verificar que el email no esté en uso por otro usuario
-        const emailCheckQuery = 'SELECT id FROM usuarios WHERE LOWER(email) = LOWER($1) AND id != $2';
-        const emailCheckResult = await pool.query(emailCheckQuery, [email, userId]);
-        
-        if (emailCheckResult.rows.length > 0) {
-            return res.status(400).json({
-                success: false,
-                error: 'El email ya está en uso por otro usuario'
-            });
-        }
-        
-        // Actualizar perfil
-        const updateQuery = `
-            UPDATE usuarios 
-            SET nombre = $1, email = $2, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $3
-            RETURNING id, nombre, email, rol, area
-        `;
-        
-        const result = await pool.query(updateQuery, [nombre, email, userId]);
-        const updatedUser = result.rows[0];
-        
-        // Registrar cambio en historial (si existe la tabla)
-        try {
-            await pool.query(`
-                INSERT INTO historial_cambios 
-                (tabla_afectada, registro_id, usuario_id, accion, datos_nuevos)
-                VALUES ('usuarios', $1, $2, 'PROFILE_UPDATE', $3)
-            `, [userId, userId, JSON.stringify({ 
-                nombre, 
-                email,
-                timestamp: new Date()
-            })]);
-        } catch (historialError) {
-            console.log('⚠️ No se pudo registrar actualización de perfil en historial');
-        }
-        
-        console.log(`✅ Perfil actualizado para usuario ID: ${userId}`);
-        
-        res.json({
-            success: true,
-            message: 'Perfil actualizado exitosamente',
-            user: updatedUser
-        });
-        
-    } catch (error) {
-        console.error('❌ Error al actualizar perfil:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Error al actualizar perfil'
+            error: 'Error al obtener perfil'
         });
     }
 };
@@ -503,6 +463,5 @@ module.exports = {
     verifyToken,
     logout,
     changePassword,
-    getProfile,
-    updateProfile
+    getProfile
 };
