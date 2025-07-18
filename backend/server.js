@@ -15,6 +15,8 @@ const catalogoRoutes = require('./routes/catalogo');
 const reportesRoutes = require('./routes/reportes');
 const uploadsRoutes = require('./routes/uploads');
 const siserRoutes = require('./routes/siser');
+const usersRoutes = require('./routes/users');
+const configuracionRoutes = require('./routes/configuracion');
 
 // Crear aplicación Express
 const app = express();
@@ -74,6 +76,8 @@ app.use('/api/catalogo', catalogoRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/siser', siserRoutes);
+app.use('/api/users', usersRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
