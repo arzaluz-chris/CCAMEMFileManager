@@ -40,7 +40,6 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       
-      // IMPORTANTE: Usar el mismo nombre de token en toda la aplicación
       const token = localStorage.getItem('ccamem_token');
       const userData = localStorage.getItem('ccamem_user');
 
@@ -72,27 +71,26 @@ export const AuthProvider = ({ children }) => {
       } catch (verifyError) {
         console.log('❌ Error verificando token:', verifyError.message);
         
-        // Si el error es 401 (no autorizado), limpiar datos
+        // Si el error es 401, limpiar datos
         if (verifyError.response?.status === 401) {
           console.log('🔄 Token expirado o inválido, limpiando sesión');
           clearAuthData();
-        } else {
-          // Para otros errores, mantener la sesión pero marcar error
-          console.log('⚠️ Error de red, manteniendo sesión local');
-          if (userData) {
-            try {
-              setUser(JSON.parse(userData));
-            } catch (parseError) {
-              console.log('❌ Error parseando datos de usuario');
-              clearAuthData();
-            }
+        } else if (userData) {
+          // Si hay error de red pero tenemos datos de usuario, mantener la sesión
+          console.log('⚠️ Error de red, pero manteniendo datos locales');
+          try {
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+          } catch (e) {
+            console.error('Error parseando datos de usuario:', e);
+            clearAuthData();
           }
         }
       }
-
+      
     } catch (error) {
-      console.error('❌ Error verificando autenticación:', error);
-      clearAuthData();
+      console.error('❌ Error crítico en checkAuthStatus:', error);
+      setError('Error verificando autenticación');
     } finally {
       setLoading(false);
     }
@@ -110,26 +108,21 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
-   * Iniciar sesión
+   * Login del usuario
    */
   const login = async (email, password) => {
     try {
       setLoading(true);
       setError(null);
-
-      console.log('🔐 Intentando login para:', email);
-
-      const response = await apiClient.post('/auth/login', {
-        email: email.trim(),
-        password: password
-      });
-
-      console.log('📝 Respuesta del login:', response.data);
-
-      if (response.data.success && response.data.token) {
-        console.log('✅ Login exitoso, guardando datos');
-        
-        // Guardar token y datos del usuario
+      
+      console.log('🔐 Iniciando proceso de login para:', email);
+      
+      const response = await apiClient.post('/auth/login', { email, password });
+      
+      console.log('📥 Respuesta de login:', response.data);
+      
+      if (response.data.success && response.data.token && response.data.user) {
+        // Guardar token y datos de usuario
         localStorage.setItem('ccamem_token', response.data.token);
         localStorage.setItem('ccamem_user', JSON.stringify(response.data.user));
         
@@ -137,14 +130,15 @@ export const AuthProvider = ({ children }) => {
         setUser(response.data.user);
         setError(null);
         
-        console.log('✅ Datos guardados correctamente');
+        console.log('✅ Login exitoso:', response.data.user.email);
+        
         return { success: true, user: response.data.user };
       } else {
-        console.log('❌ Login fallido:', response.data.error);
-        setError(response.data.error || 'Error en el login');
-        return { success: false, error: response.data.error };
+        const errorMessage = response.data.error || 'Error en el login';
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
       }
-
+      
     } catch (error) {
       console.error('❌ Error en login:', error);
       
@@ -152,12 +146,10 @@ export const AuthProvider = ({ children }) => {
       
       if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
-      } else if (error.response?.status === 401) {
-        errorMessage = 'Credenciales incorrectas';
-      } else if (error.response?.status >= 500) {
-        errorMessage = 'Error del servidor. Intente más tarde.';
-      } else if (error.message === 'Network Error') {
+      } else if (error.code === 'ERR_NETWORK') {
         errorMessage = 'Error de conexión. Verifique su conexión a internet.';
+      } else if (error.response?.status === 500) {
+        errorMessage = 'Error del servidor. Intente más tarde.';
       }
       
       setError(errorMessage);

@@ -2,22 +2,14 @@
 // Componente para proteger rutas que requieren autenticación
 
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { Box, CircularProgress, Typography } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 
 /**
  * Componente de ruta privada que requiere autenticación
- * @param {Object} props - Props del componente
- * @param {React.Component} props.children - Componente hijo a renderizar si está autenticado
- * @param {Array|string} props.roles - Roles requeridos para acceder a esta ruta
- * @param {string} props.redirectTo - Ruta a la que redirigir si no está autenticado
  */
-const PrivateRoute = ({ 
-  children, 
-  roles = [], 
-  redirectTo = '/login' 
-}) => {
+const PrivateRoute = ({ roles = [] }) => {
   const { user, loading, isAuthenticated, hasRole } = useAuth();
   const location = useLocation();
 
@@ -54,7 +46,7 @@ const PrivateRoute = ({
     console.log('❌ PrivateRoute - Usuario no autenticado, redirigiendo a login');
     return (
       <Navigate 
-        to={redirectTo} 
+        to="/login" 
         state={{ from: location }} 
         replace 
       />
@@ -89,36 +81,9 @@ const PrivateRoute = ({
     }
   }
 
-  // Todo está bien, renderizar el contenido
+  // Todo está bien, renderizar el contenido usando Outlet
   console.log('✅ PrivateRoute - Acceso permitido');
-  return <>{children}</>;
+  return <Outlet />;
 };
-
-/**
- * Wrapper para rutas que requieren roles específicos
- */
-export const AdminRoute = ({ children }) => (
-  <PrivateRoute roles={['admin']}>
-    {children}
-  </PrivateRoute>
-);
-
-/**
- * Wrapper para rutas que requieren rol de supervisor o admin
- */
-export const SupervisorRoute = ({ children }) => (
-  <PrivateRoute roles={['admin', 'supervisor']}>
-    {children}
-  </PrivateRoute>
-);
-
-/**
- * Wrapper para rutas que requieren cualquier rol autenticado
- */
-export const AuthenticatedRoute = ({ children }) => (
-  <PrivateRoute>
-    {children}
-  </PrivateRoute>
-);
 
 export default PrivateRoute;

@@ -1,15 +1,14 @@
+// === ARCHIVO: frontend/src/services/api.js ===
 import axios from 'axios';
 
-/**
- * Configuración de Axios para las peticiones al backend
- */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  }
 });
 
-/**
- * Interceptor para agregar el token JWT a todas las peticiones
- */
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ccamem_token');
@@ -21,16 +20,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-/**
- * Interceptor para manejar respuestas y errores globalmente
- */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
       localStorage.removeItem('ccamem_token');
       localStorage.removeItem('ccamem_user');
-      window.location.href = '/login';
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
