@@ -38,7 +38,7 @@ const Areas = () => {
       setLoading(true);
       setError(null);
       const response = await api.get('/catalogo/areas');
-      setAreas(response.data || []);
+      setAreas(response.data?.data || []);
     } catch (error) {
       console.error('Error al cargar áreas:', error);
       setError('Error al cargar las áreas. Por favor, intente nuevamente.');

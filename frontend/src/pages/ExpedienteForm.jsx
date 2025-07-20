@@ -69,7 +69,7 @@ const ExpedienteForm = () => {
   const cargarCatalogos = async () => {
     try {
       const response = await api.get('/catalogo/areas');
-      setAreas(response.data || []);
+      setAreas(response.data?.data || []);
     } catch (error) {
       console.error('Error al cargar áreas:', error);
     }
@@ -79,7 +79,7 @@ const ExpedienteForm = () => {
     try {
       setLoading(true);
       const response = await api.get(`/expedientes/${id}`);
-      const data = response.data;
+      const data = response.data?.data;
       setFormData({
         ...data,
         fecha_apertura: data.fecha_apertura ? new Date(data.fecha_apertura) : new Date(),
