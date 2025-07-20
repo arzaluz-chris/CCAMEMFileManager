@@ -61,9 +61,9 @@ const ExpedientesList = () => {
         ...filters,
       };
 
-      const response = await expedientesService.getExpedientes(params);
-      setExpedientes(response.data);
-      setTotalItems(response.pagination.totalItems);
+      const data = await expedientesService.getExpedientes(params);
+      setExpedientes(data.data || []);
+      setTotalItems(data.pagination?.total || 0);
     } catch (error) {
       console.error('Error cargando expedientes:', error);
     } finally {
