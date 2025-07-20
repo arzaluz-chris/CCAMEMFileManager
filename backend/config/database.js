@@ -10,9 +10,9 @@ require('dotenv').config();
 const dbConfig = {
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
-    database: process.env.DB_NAME || 'ccamem_db',
+    database: process.env.DB_NAME || 'ccamem_archivo',
     user: process.env.DB_USER || 'ccamem_user',
-    password: process.env.DB_PASSWORD || 'ccamem_password',
+    password: process.env.DB_PASSWORD || 'ccamem2024',
     max: 20, // Máximo número de conexiones en el pool
     idleTimeoutMillis: 30000, // Tiempo antes de cerrar conexiones inactivas
     connectionTimeoutMillis: 2000, // Tiempo máximo para conectar

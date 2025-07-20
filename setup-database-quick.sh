@@ -6,9 +6,9 @@ echo "🚀 Configurando base de datos CCAMEM..."
 echo "======================================"
 
 # Configurar variables
-DB_NAME="ccamem_db"
+DB_NAME="ccamem_archivo"
 DB_USER="ccamem_user"
-DB_PASSWORD="ccamem_password"
+DB_PASSWORD="ccamem2024"
 
 echo "1️⃣ Creando usuario y base de datos..."
 
